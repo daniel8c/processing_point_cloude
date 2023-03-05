@@ -59,12 +59,13 @@ class RawRieglFile:
         line_files_paths = self.search_line_files()
         size = self._size_files(line_files_paths)
         if line_files_paths:
-            for path in line_files_paths:
-                try:
-                    shutil.rmtree(path)
-                    info(f'Linia {self.get_file_name()}, o wadze {size / 1024:.2f} GB została usunięta')
-                except FileNotFound as err:
-                    warning(f'PLIK: {path} NIE ISTNIEJE')
+            try:
+                for path in line_files_paths:
+                    os.remove(path)
+                info(f'Linia {self.get_file_name()}, o wadze {size / 1024:.2f} GB została usunięta')
+            except FileNotFoundError as err:
+                warning(f'PLIK: {path} NIE ISTNIEJE')
+
 
     def move_up(self, out_file: Path):
         '''
