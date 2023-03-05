@@ -2,13 +2,12 @@ import os
 import shutil
 from typing import Union, List
 from pathlib import Path
-from colorama import Fore, Style
 from processing.manage_folders import Folder
 from processing.message import info, warning
 
 
 class RawRieglFile:
-    def __init__(self, path_to_file: str):
+    def __init__(self, path_to_file: Path):
         self.path_to_file = Path(path_to_file)
 
     def search_line_files(self) -> List[Path]:
@@ -42,47 +41,54 @@ class RawRieglFile:
         den_mb = 1024 * 1024
         if isinstance(paths, str):
             file_size = os.path.getsize(paths) / den_mb
-            print(f'Rozmiar pliku {os.path.basename(paths)}: {file_size:.2f} MB')
+            info(f'Rozmiar pliku {os.path.basename(paths)}: {file_size:.2f} MB')
         else:
             file_size = 0
             for path in paths:
                 file_size += os.path.getsize(path) / den_mb
-                print(f'Rozmiar pliku {os.path.basename(path)}: {os.path.getsize(path) / den_mb:.2f} MB')
+                info(f'Rozmiar pliku {os.path.basename(path)}: {os.path.getsize(path) / den_mb:.2f} MB')
         return file_size
 
     def remove(self):
+        '''
+        Remove method removes line files from the disk.
+
+        :raises FileNotFound: If file is not found.
+        '''
+
         line_files_paths = self.search_line_files()
         size = self._size_files(line_files_paths)
-        for path in line_files_paths:
-            try:
-                shutil.rmtree(path)
-                print(f'Linia {self.get_file_name()}, o wadze {size / 1024:.2f} GB została usunięta')
-            except FileNotFound as err:
-                print(f'{Fore.BLUE}PLIK: {path} NIE ISTNIEJE{Style.RESET_ALL}')
+        if line_files_paths:
+            for path in line_files_paths:
+                try:
+                    shutil.rmtree(path)
+                    info(f'Linia {self.get_file_name()}, o wadze {size / 1024:.2f} GB została usunięta')
+                except FileNotFound as err:
+                    warning(f'PLIK: {path} NIE ISTNIEJE')
 
-    def move_up(self, in_file: str, out_file: str):
-        if os.path.isfile(in_file):
+    def move_up(self, out_file: Path):
+        '''
+        Move line rxp file up to the output directory if ZIF file exist
+        If rxp file is not found, the method removes the parent folder if is empty of the rxp file
+        If moving file complete, parent folder is removing
+
+        :param out_file: Output file path.
+        '''
+
+        if self.path_to_file.is_file():
             if self.check_zif_file_exist(out_file):
-                shutil.move(in_file, out_file)
-                folder = Folder(os.path.dirname(in_file))
+                shutil.move(self.path_to_file, out_file)
+                folder = Folder(os.path.dirname(self.path_to_file))
                 folder.remove_folder(True)
             else:
-                print(
-                    f'{Fore.BLUE}PLIK {self.get_file_name()}.zif NIE ZNAJDUJE SIE W FOLDERZE: {out_file} - NIE PRZENIESIONO{Style.RESET_ALL}')
-        else:
-            folder = Folder(os.path.dirname(in_file))
-            folder.remove_folder(True)
+                warning(f'PLIK {self.get_file_name()}.zif NIE ZNAJDUJE SIE W FOLDERZE: {out_file} - NIE PRZENIESIONO')
 
     def get_file_name(self) -> str:
         return os.path.splitext(os.path.basename(self.path_to_file))[0]
 
-    def check_zif_file_exist(self, zif_folder: str) -> bool:
-        zif_files = [f for f in os.listdir(zif_folder) if os.path.isfile(os.path.join(zif_folder, f))]
+    def check_zif_file_exist(self, zif_folder: Path) -> bool:
+        zif_files = [f.name for f in zif_folder.iterdir() if f.is_file() and f.suffix == '.zif']
         return self.get_file_name() + '.zif' in zif_files
 
     def __str__(self):
         return f'Linia: {self.get_file_name()}'
-
-
-file = RawRieglFile(r"H:\PROJECT_TESTING\NOWY_SZABLON\DANE_PRZYGOTOWANE\03_RIEGL_RAW\02_RXP\LIDAR\221017_051950.rxp")
-file.search_line_files()

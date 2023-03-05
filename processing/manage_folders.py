@@ -17,8 +17,6 @@ class Folder:
         Removes the directory at the path specified by the object, along with all its contents.
 
         :param bool must_be_empty: A boolean flag indicating whether the directory should only be removed if it is empty.
-
-        :return: None
         '''
 
         if must_be_empty == True:

@@ -2,96 +2,91 @@ import os
 import codecs
 import time
 import math
+from pathlib import Path
+from processing.manage_folders import Folder
 
 class Project:
     def __init__(self):
         # script path
-        self.script_path = os.getcwd()
+        self.script_path = Path.cwd()
 
         # saving start_time
         self.time_start = time.time()
 
         # setting project path
-        print('SETTING PROJECT PATH\n')
-        for i in range(4):
-            os.chdir('..')
+        # print('SETTING PROJECT PATHS\n')
+        self.data_prepared = Folder.search_up_folder(self.script_path, 'DANE_PRZYGOTOWANE')
 
         # project path
-        self.project_path = os.getcwd()
+        self.project_path = self.data_prepared.parent
 
-        self.data_prepared = os.path.join(self.project_path, r'DANE_PRZYGOTOWANE')
+        self.raw_data = self.data_prepared.joinpath(r'03_RIEGL_RAW\02_RXP\LIDAR')
 
-        self.raw_data = os.path.join(self.data_prepared, r'03_RIEGL_RAW\02_RXP\LIDAR')
-        self.las_data = os.path.join(self.data_prepared, r'09_EXPORT\LASER_DATA')
-        self.trj_data = os.path.join(self.data_prepared, r'09_EXPORT\TRAJECTORY')
 
-        self.postprocessing = os.path.join(self.data_prepared, r'11_POSTPROCESSING')
+        self.las_data = self.data_prepared.joinpath(r'09_EXPORT\LASER_DATA')
+        self.trj_data = self.data_prepared.joinpath(r'09_EXPORT\TRAJECTORY')
 
-        self.terra_solid = os.path.join(self.postprocessing, r'02_PROJECT_TERRASOLID')
+        self.postprocessing = self.data_prepared.joinpath(r'11_POSTPROCESSING')
+
+        self.terra_solid = self.postprocessing.joinpath(r'02_PROJECT_TERRASOLID')
 
         # data preparation
-        self.boundaries = os.path.join(self.postprocessing, r'03_BOUNDARIES')
-        self.grids_dir = os.path.join(self.boundaries, r'ARKUSZE_ROBOCZE')
-        self.grid_index_dir = os.path.join(self.boundaries, r'SIATKA_ARKUSZY')
-        self.input_area = [os.path.join(self.boundaries, shape) for shape in os.listdir(self.boundaries) if
-                           shape.endswith('shp')][0]
-        self.input_area_buff30m = os.path.join(self.grids_dir,
-                                               r'{}_BUFF30M.shp'.format(os.path.basename(self.input_area)[:-4]))
+        self.boundaries = self.postprocessing.joinpath(r'03_BOUNDARIES')
+        self.grids_dir = self.boundaries.joinpath(r'ARKUSZE_ROBOCZE')
+        self.grid_index_dir = self.boundaries.joinpath(r'SIATKA_ARKUSZY')
+
+        self.input_area = [shape for shape in self.boundaries.iterdir() if shape.suffix == '.shp'][0]
+        self.input_area_buff30m = self.grids_dir.joinpath(r'{}_BUFF30M.shp'.format(self.input_area.name)[:-4])
 
         # alignment
-        self.report = os.path.join(self.terra_solid, 'report.txt')
-        self.parameters = os.path.join(self.terra_solid, 'parameters.txt')
+        self.report = self.terra_solid.joinpath('report.txt')
+        self.parameters = self.terra_solid.joinpath('parameters.txt')
 
         # data density and extent
-        self.analysis = os.path.join(self.postprocessing, r'10_ANALYSIS')
-        self.density_project = os.path.join(self.analysis, r'DENSITY')
-        self.denisty_for_lines = os.path.join(self.density_project, 'FOR_LINES')
-        self.denisty_for_project = os.path.join(self.density_project, 'FOR_PROJECT')
-        self.denisty_for_grids = os.path.join(self.density_project, 'FOR_GRIDS')
-        self.result = os.path.join(self.analysis, r'RESULT')
-        self.extent = os.path.join(self.analysis, r'EXTENT')
-        self.map_analysis = os.path.join(self.analysis, 'MAPA.mxd')
+        self.analysis = self.postprocessing.joinpath(r'10_ANALYSIS')
+        self.density_project = self.analysis.joinpath(r'DENSITY')
+        self.denisty_for_lines = self.density_project.joinpath('FOR_LINES')
+        self.denisty_for_project = self.density_project.joinpath('FOR_PROJECT')
+        self.denisty_for_grids = self.density_project.joinpath('FOR_GRIDS')
+        self.result = self.analysis.joinpath(r'RESULT')
+        self.extent = self.analysis.joinpath(r'EXTENT')
+        self.map_analysis = self.analysis.joinpath('MAPA.mxd')
 
         # las point block
-        self.dir_buff = os.path.join(self.postprocessing, r'05_BUFF_LAS_FILES')
-        self.buff_las_files = [os.path.join(self.dir_buff, las) for las in os.listdir(self.dir_buff) if
-                               las.endswith('.las')]
-        self.dir_clip = os.path.join(self.postprocessing, r'06_CLIP_LAS_FILES')
-        self.clip_las_files = [os.path.join(self.dir_clip, las) for las in os.listdir(self.dir_buff) if
-                               las.endswith('.las')]
-        self.dir_all = os.path.join(self.postprocessing, r'07_ALL_LAS_FILES')
-        self.all_las_files = [os.path.join(self.dir_all, las) for las in os.listdir(self.dir_all) if
-                              las.endswith('.las')]
+        self.dir_buff = self.postprocessing.joinpath(r'05_BUFF_LAS_FILES')
+        self.dir_clip = self.postprocessing.joinpath(r'06_CLIP_LAS_FILES')
+        self.dir_all = self.postprocessing.joinpath(r'07_ALL_LAS_FILES')
+        self.buff_las_files = [las for las in self.dir_buff.iterdir() if las.suffix == '.las']
+        self.clip_las_files = [las for las in self.dir_buff.iterdir() if las.suffix == '.las']
+        self.all_las_files = [las for las in self.dir_all.iterdir() if las.suffix == '.las']
 
         # reference data
-        self.reference_data = os.path.join(self.postprocessing, r'11_REFERENCE_DATA')
-        self.work_reference_data = os.path.join(self.reference_data, r'ROBOCZY')
+        self.reference_data = self.postprocessing.joinpath(r'11_REFERENCE_DATA')
+        self.work_reference_data = self.reference_data.joinpath(r'ROBOCZY')
 
         # documentation and file with properties project
-        self.documentation = os.path.join(self.postprocessing, r'12_DOCUMENTATION')
-        self.info_file = os.path.join(self.documentation, r'PROJECT_INFO.txt')
+        self.documentation = self.postprocessing.joinpath(r'12_DOCUMENTATION')
+        self.info_file = self.documentation.joinpath(r'PROJECT_INFO.txt')
 
         # execute basic methods
         self.read_properties()
         self.assign_properties()
 
         # setting necessary data paths
-        self.database_poland = r'\\nas1\teledetekcja\BAZA_DANYCH_POLSKA\DANE_POLSKA.gdb'
-        self.work_grid = os.path.join(self.database_poland, 'Siatka_NMT_1992\PL1992_{}_NMT'.format(self.work_grid))
-        self.target_grid_cloud = os.path.join(self.database_poland,
-                                              'Siatka_NMT_1992\PL1992_{}_NMT'.format(self.grid_cloude))
-        self.target_grid_models = os.path.join(self.database_poland,
-                                               'Siatka_NMT_1992\PL1992_{}_NMT'.format(self.grid_models))
+        self.database_poland = Path(r'\\nas1\teledetekcja\BAZA_DANYCH_POLSKA\DANE_POLSKA.gdb')
+        self.work_grid = self.database_poland.joinpath('Siatka_NMT_1992\PL1992_{}_NMT'.format(self.work_grid))
+        self.target_grid_cloud = self.database_poland.joinpath('Siatka_NMT_1992\PL1992_{}_NMT'.format(self.grid_cloude))
+        self.target_grid_models = self.database_poland.joinpath('Siatka_NMT_1992\PL1992_{}_NMT'.format(self.grid_models))
 
         # paths to raw files and export from riegl files
-        self.rxp_files = [os.path.join(self.raw_data, rxp) for rxp in os.listdir(self.raw_data) if rxp.endswith('.rxp')]
-        self.las_files = [os.path.join(self.las_data, las) for las in os.listdir(self.las_data) if las.endswith('.las')]
-        self.trj_txt = [os.path.join(self.trj_data, trj) for trj in os.listdir(self.trj_data) if trj.endswith('.txt')]
-        self.real_lines = os.path.join(self.boundaries, r'LINIE_LOTU\RZECZYWISTE\REAL_LINES.shp')
-        self.project_lines = os.path.join(self.boundaries, r'LINIE_LOTU\PROJEKTOWANE')
+        self.rxp_files = [rxp for rxp in self.raw_data.iterdir() if rxp.suffix == '.rxp']
+        self.las_files = [las for las in self.las_data.iterdir() if las.suffix == '.las']
+        self.trj_txt = [trj for trj in self.trj_data.iterdir() if trj.suffix == '.txt']
+        self.real_lines = self.boundaries.joinpath(r'LINIE_LOTU\RZECZYWISTE\REAL_LINES.shp')
+        self.project_lines = self.boundaries.joinpath(r'LINIE_LOTU\PROJEKTOWANE')
 
         # path to lasdataset file
-        self.las_dataset_file = os.path.join(self.dir_buff, 'las_dataset.lasd')
+        self.las_dataset_file = self.dir_buff.joinpath('las_dataset.lasd')
 
         # setting start work paths
         os.chdir(self.script_path)
